@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Total Rewards Portfolio Calculator</title>
+    
+    <!-- We use the Chart.js library for the donut chart. It's loaded from a reliable CDN. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* --- Core Styling & Fonts --- */
+        :root {
+            /* === EASY TO CUSTOMIZE COLORS === */
+            --color-base: #005A9C;      /* A professional blue */
+            --color-incentives: #00B294; /* A vibrant teal/green */
+            --color-stipends: #5C2D91;   /* A deep purple */
+            --color-retirement: #F2C811; /* A warm gold/yellow */
+            --color-benefits: #A4B400;   /* A modern lime green */
+            --background-color: #ffffff;
+            --text-color: #333333;
+            --light-text-color: #666666;
+            --border-color: #e0e0e0;
+            --font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2em;
+            box-sizing: border-box;
+        }
+
+        /* --- Main Layout --- */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .calculator-wrapper {
+            display: flex;
+            gap: 2.5rem;
+            margin-top: 2rem;
+        }
+
+        .inputs-column {
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .results-column {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- Section Headers --- */
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: var(--light-text-color);
+            margin-bottom: 2rem;
+        }
+        
+        h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        /* --- Input Field Styling --- */
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--color-base);
+        }
+
+        /* --- Chart & Results Styling --- */
+        #chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+            height: 350px;
+        }
+
+        #total-value-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none; /* Allows clicks to go through to the chart if needed */
+        }
+
+        #total-value-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--light-text-color);
+        }
+
+        #total-value-amount {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-color);
+            line-height: 1.2;
+        }
+        
+        #summary-breakdown {
+            width: 100%;
+            margin-top: 2rem;
+            padding: 0;
+            list-style: none;
+        }
+        
+        #summary-breakdown li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+        
+        #summary-breakdown li:last-child {
+            border-bottom: none;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .legend-color-box {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+        
+        .value-breakdown {
+            text-align: right;
+        }
+        
+        .value-breakdown .percentage {
+            font-weight: 600;
+            color: var(--light-text-color);
+            margin-left: 0.5rem;
+        }
+
+        /* --- Responsive Design for smaller screens --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 1em;
+            }
+            .calculator-wrapper {
+                flex-direction: column;
+                gap: 2rem;
+            }
+            h1 { font-size: 1.5rem; }
+            #total-value-amount { font-size: 1.8rem; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Your Total Rewards Portfolio</h1>
+        <p class="subtitle">Enter your personal reward values below to see a complete picture of your compensation package. This tool helps illustrate our commitment to taking care of the events that shape your life.</p>
+
+        <div class="calculator-wrapper">
+            
+            <!-- Left Column: Inputs -->
+            <div class="inputs-column">
+                <h2>Your Reward Components</h2>
+                <form id="rewards-form">
+                    <div class="input-group">
+                        <label for="base-salary">1. Base Salary (Annual)</label>
+                        <input type="number" id="base-salary" placeholder="e.g., 90000" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="incentives">2. Incentives (Target Bonus, Commission)</label>
+                        <input type="number" id="incentives" placeholder="e.g., 15000" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="stipends">3. Stipends & Allowances</label>
+                        <input type="number" id="stipends" placeholder="e.g., 2400" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="retirement">4. Retirement / Pension (Company Match)</label>
+                        <input type="number" id="retirement" placeholder="e.g., 4500" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="benefits">5. Benefits (Company-paid Premiums)</label>
+                        <input type="number" id="benefits" placeholder="e.g., 8000" min="0">
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Column: Chart & Summary -->
+            <div class="results-column">
+                <div id="chart-container">
+                    <canvas id="rewardsChart"></canvas>
+                    <div id="total-value-display">
+                        <div id="total-value-label">Total Annual Value</div>
+                        <div id="total-value-amount">$0</div>
+                    </div>
+                </div>
+
+                <ul id="summary-breakdown">
+                    <!-- Breakdown items will be generated here by JavaScript -->
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- 1. GET REFERENCES TO HTML ELEMENTS ---
+            const form = document.getElementById('rewards-form');
+            const inputs = {
+                base: document.getElementById('base-salary'),
+                incentives: document.getElementById('incentives'),
+                stipends: document.getElementById('stipends'),
+                retirement: document.getElementById('retirement'),
+                benefits: document.getElementById('benefits')
+            };
+            const totalValueAmountEl = document.getElementById('total-value-amount');
+            const summaryBreakdownEl = document.getElementById('summary-breakdown');
+            const canvasCtx = document.getElementById('rewardsChart').getContext('2d');
+
+            // --- 2. DEFINE CHART LABELS, COLORS, AND DATA STRUCTURE ---
+            const rewardCategories = [
+                { id: 'base', label: 'Base Salary', color: getComputedStyle(document.documentElement).getPropertyValue('--color-base') },
+                { id: 'incentives', label: 'Incentives', color: getComputedStyle(document.documentElement).getPropertyValue('--color-incentives') },
+                { id: 'stipends', label: 'Stipends/Allowances', color: getComputedStyle(document.documentElement).getPropertyValue('--color-stipends') },
+                { id: 'retirement', label: 'Retirement', color: getComputedStyle(document.documentElement).getPropertyValue('--color-retirement') },
+                { id: 'benefits', label: 'Benefits', color: getComputedStyle(document.documentElement).getPropertyValue('--color-benefits') }
+            ];
+
+            // --- 3. INITIALIZE THE CHART.JS DOUGHNUT CHART ---
+            const rewardsChart = new Chart(canvasCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: rewardCategories.map(c => c.label),
+                    datasets: [{
+                        data: [1, 0, 0, 0, 0], // Start with a default value to draw something
+                        backgroundColor: rewardCategories.map(c => c.color),
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%', // Creates the donut hole
+                    plugins: {
+                        legend: {
+                            display: false // We're creating a custom legend below
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.chart.getDatasetMeta(0).total;
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                    return `${label}: ${formatCurrency(value)} (${percentage})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // --- 4. THE CORE CALCULATION AND UPDATE FUNCTION ---
+            function calculateAndRedraw() {
+                let totalValue = 0;
+                const values = {};
+
+                // Get values from inputs, default to 0 if empty or invalid
+                for (const category of rewardCategories) {
+                    const value = parseFloat(inputs[category.id].value) || 0;
+                    values[category.id] = value;
+                    totalValue += value;
+                }
+
+                // Update the chart's data
+                rewardsChart.data.datasets[0].data = rewardCategories.map(c => values[c.id]);
+                
+                // If total is 0, give base salary a tiny value to prevent chart collapse
+                if (totalValue === 0) {
+                   rewardsChart.data.datasets[0].data[0] = 1;
+                }
+                rewardsChart.update();
+
+                // Update the big total value in the center
+                totalValueAmountEl.textContent = formatCurrency(totalValue);
+
+                // Update the detailed summary breakdown
+                summaryBreakdownEl.innerHTML = '';
+                for (const category of rewardCategories) {
+                    const value = values[category.id];
+                    const percentage = totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : '0.0';
+                    
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="legend-item">
+                            <div class="legend-color-box" style="background-color: ${category.color};"></div>
+                            <span>${category.label}</span>
+                        </div>
+                        <div class="value-breakdown">
+                            <span>${formatCurrency(value)}</span>
+                            <span class="percentage">(${percentage}%)</span>
+                        </div>
+                    `;
+                    summaryBreakdownEl.appendChild(li);
+                }
+            }
+            
+            // --- 5. HELPER FUNCTION FOR CURRENCY FORMATTING ---
+            function formatCurrency(value) {
+                // You can adjust 'en-US' and 'USD' to your primary region/currency
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(value);
+            }
+
+            // --- 6. ATTACH EVENT LISTENERS ---
+            // Listen for any input on the form and recalculate
+            form.addEventListener('input', calculateAndRedraw);
+
+            // --- 7. INITIAL DRAW ON PAGE LOAD ---
+            calculateAndRedraw();
+        });
+    </script>
+</body>
+</html>
